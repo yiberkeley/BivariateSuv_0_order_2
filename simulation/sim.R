@@ -1,6 +1,6 @@
 
-new_path <- "/global/home/users/yili/R/x86_64-pc-linux-gnu-library/4.3"
-.libPaths(new_path)
+#new_path <- "/global/home/users/yili/R/x86_64-pc-linux-gnu-library/4.3"
+#.libPaths(new_path)
 
 source("utils.R")
 source("utils_MLE.R")
