@@ -1,4 +1,4 @@
-.libPaths(c("/global/home/users/yili/R/x86_64-pc-linux-gnu-library/4.3",.libPaths()))
+
 #in build, install
 library(devtools)
 library(hal9001)
