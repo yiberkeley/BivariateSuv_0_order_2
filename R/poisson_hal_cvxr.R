@@ -42,14 +42,14 @@ cvrx_poisson_l1_offset<-function(l1_norm_seq,x_basis_poisson,offset,weights,y,pe
   print(p)
   print(length_clever)
   print(p-length_clever)
-
+  
   X<-x_basis_poisson
   penalty<-penalty_factor
   if((p-length_clever)>=1){
     beta_0<-as.numeric(coef_initial)[1]
     beta_fixed<-as.numeric(coef_initial)[-1]
     epsilon<- Variable(length_clever)
-
+    
     fixed_part<-X[,1:(p-length_clever)]%*% beta_fixed
     X_var<-X[,(p-length_clever+1):p]
   }else{
@@ -58,14 +58,14 @@ cvrx_poisson_l1_offset<-function(l1_norm_seq,x_basis_poisson,offset,weights,y,pe
     fixed_part<-0
     X_var<-X[,1:p]
   }
-
+  
   if(!uniform_ratio){
     loss<-sum(exp(offset+fixed_part+X_var%*%epsilon+beta_0)*weights*(1-y))-sum((fixed_part+X_var%*%epsilon+beta_0)*y*weights)
   }
   else{
     loss<-sum(exp(offset+fixed_part+X_var%*%epsilon+beta_0+log(1/(1-time_vec)))*weights*(1-y))-sum((fixed_part+X_var%*%epsilon+beta_0+log(1/(1-time_vec)))*y*weights)
   }
-
+  
   results <- lapply(l1_norm_seq,
                     function (l1_norm) {
                       constraint1<-sum(abs(epsilon))<= l1_norm
@@ -77,10 +77,13 @@ cvrx_poisson_l1_offset<-function(l1_norm_seq,x_basis_poisson,offset,weights,y,pe
                       #browser()
                       result <- CVXR::solve(problem,solver="SCS",
                                             verbose=TRUE,
-                                            max_iters = 20000,
+                                            max_iters = 10000,
                                             eps_rel = 1e-6,
                                             eps_abs = 1e-6,
-                                            eps_infeas = 1e-7) #This is crucial ECOS,SCS
+                                            eps_infeas = 1e-7,
+                                            scale = 5,
+                                            adaptive_scale = TRUE,
+                                            alpha = 1.2) #This is crucial ECOS,SCS
                       print("solved")
                       result_return<-list()
                       if((p-length_clever)>=1){
@@ -93,8 +96,8 @@ cvrx_poisson_l1_offset<-function(l1_norm_seq,x_basis_poisson,offset,weights,y,pe
                       print("stored")
                       return(result_return)
                     })
-
-
+  
+  
   return(results)
 }
 
@@ -106,7 +109,7 @@ cvrx_poisson_l1<-function(l1_norm_seq,x_basis_poisson,offset,weights,y,penalty_f
   # beta_0_vals <- matrix(0, nrow = 1, ncol = length(lambda_vals))
   X<-x_basis_poisson
   penalty<-penalty_factor
-
+  
   beta_0<-Variable(1)
   beta <- Variable(p)
   if(!uniform_ratio){
@@ -115,9 +118,9 @@ cvrx_poisson_l1<-function(l1_norm_seq,x_basis_poisson,offset,weights,y,penalty_f
   else{
     loss<-sum(exp(offset+X%*% beta+beta_0+log(1/(1-time_vec)))*weights*(1-y))-sum((X%*% beta+beta_0+log(1/(1-time_vec)))*y*weights)
   }
-
+  
   results <- lapply(l1_norm_seq,
-                      function (l1_norm) {
+                    function (l1_norm) {
                       constraint1<-sum(abs(beta)*penalty)<= l1_norm
                       #constraint1<-sum((beta)^2*penalty)<= l1_norm
                       constraints <-list(constraint1)
@@ -126,11 +129,14 @@ cvrx_poisson_l1<-function(l1_norm_seq,x_basis_poisson,offset,weights,y,penalty_f
                       problem <- Problem(objective, constraints)
                       #browser()
                       result <- CVXR::solve(problem,solver="SCS",
-                                                    verbose=TRUE,
-                                                      max_iters = 20000,
-                                                      eps_rel = 1e-6,
-                                                      eps_abs = 1e-6,
-                                                      eps_infeas = 1e-7) #This is crucial ECOS,SCS
+                                            verbose=TRUE,
+                                            max_iters = 10000,
+                                            eps_rel = 1e-6,
+                                            eps_abs = 1e-6,
+                                            eps_infeas = 1e-7,
+                                            scale = 5,
+                                            adaptive_scale = TRUE,
+                                            alpha = 1.2) #This is crucial ECOS,SCS
                       print("solved")
                       result_return<-list()
                       result_return[[1]]<-result$getValue(beta)
@@ -140,8 +146,8 @@ cvrx_poisson_l1<-function(l1_norm_seq,x_basis_poisson,offset,weights,y,penalty_f
                       print("stored")
                       return(result_return)
                     })
-
-
+  
+  
   return(results)
 }
 
@@ -149,10 +155,10 @@ cvrx_poisson_l1<-function(l1_norm_seq,x_basis_poisson,offset,weights,y,penalty_f
 
 cv_fit_cvxr<-function(poisson_data,l1_norm_seq,nfolds,penalty_factor,uniform_ratio=F,position_basis=NULL,additional_offset=NULL,
                       offset_initial=NULL,length_clever=NULL,coef_initial=NULL){
-
+  
   nfolds<-nfolds
   repeated_data_all<-poisson_data
-
+  
   #num_cores <- detectCores()-2
   #registerDoParallel(cores = num_cores)
   if(is.null(position_basis)){
@@ -160,25 +166,25 @@ cv_fit_cvxr<-function(poisson_data,l1_norm_seq,nfolds,penalty_factor,uniform_rat
   }else{
     penalty_factor<-penalty_factor[position_basis]
   }
-
+  
   if(is.null(additional_offset)){
     additional_offset<-rep(0,dim(repeated_data_all)[[1]])
   }else{
     additional_offset<-additional_offset
   }
-
-
+  
+  
   print("check point: cv fit prepared")
-
+  
   cv_results<-NULL
   for(i in 1:nfolds){
     train<-repeated_data_all[repeated_data_all$fold!=i,]
     test<-repeated_data_all[repeated_data_all$fold==i,]
-
+    
     additional_offset_train<-additional_offset[repeated_data_all$fold!=i]
     additional_offset_test<-additional_offset[repeated_data_all$fold==i]
-
-
+    
+    
     if(is.null(position_basis)){
       x_basis_poisson <- as.matrix(train[,-c(1:9)])
       x_basis_poisson_test <- as.matrix(test[,-c(1:9)])
@@ -187,31 +193,31 @@ cv_fit_cvxr<-function(poisson_data,l1_norm_seq,nfolds,penalty_factor,uniform_rat
       x_basis_poisson <- as.matrix(train[,-c(1:9)])[,position_basis]
       x_basis_poisson_test <- as.matrix(test[,-c(1:9)])[,position_basis]
     }
-
+    
     #Training
     offset<-as.vector(log(train$timeIntervalLength)+additional_offset_train)
     weights<- as.vector(train$weights)
     y<-as.vector(train$jump)
     time_vec<-as.vector(train$t)
-
+    
     if(is.null(offset_initial)){
       fit<-cvrx_poisson_l1(l1_norm_seq,x_basis_poisson,offset,weights,y,penalty_factor,time_vec,uniform_ratio)
     }else{
       fit<-cvrx_poisson_l1_offset(l1_norm_seq,x_basis_poisson,offset,weights,y,penalty_factor,time_vec,uniform_ratio,length_clever,coef_initial)
     }
-
-
+    
+    
     #Validation
     loss_results<-NULL
     for(j in 1:length(l1_norm_seq)) {
-
-
+      
+      
       offset_test<-log(test$timeIntervalLength)+additional_offset_test
       weights_test<- test$weights
       y_test<-test$jump
       X_test<-x_basis_poisson_test
       time_vec_test<-as.vector(test$t)
-
+      
       beta<-fit[[j]][[1]]
       beta_0<-fit[[j]][[2]]
       if(!uniform_ratio){
@@ -219,8 +225,8 @@ cv_fit_cvxr<-function(poisson_data,l1_norm_seq,nfolds,penalty_factor,uniform_rat
       }else{
         loss_valid<-sum(exp(offset_test+X_test%*% beta+beta_0+log(1/(1-time_vec_test)))*weights_test*(1-y_test))-sum((X_test%*% beta+beta_0+log(1/(1-time_vec_test)))*y_test*weights_test)
       }
-
-
+      
+      
       cv_num_coef_ij <- sum(abs(beta)>10^-4)
       ##########
       print("dev1 within cv" %+% loss_valid)
@@ -229,20 +235,20 @@ cv_fit_cvxr<-function(poisson_data,l1_norm_seq,nfolds,penalty_factor,uniform_rat
       cv_l1_norm_ij<-sum(abs(beta)[abs(beta)>10^-4])
       loss_results<-rbind(loss_results,c(l1_norm_seq[j],cv_num_coef_ij, cv_loss_ij,cv_l1_norm_ij,i))
     }
-
+    
     cv_results<-rbind(cv_results,loss_results)
     #return(loss_results)
   }
-
+  
   colnames(cv_results)<-c('l1_norm','cv_num_coef','cv_loss','l1','round')
   cv_results<-as.data.frame(cv_results)
-
+  
   #library(dplyr)
-
-    cv_results_final<-cv_results %>% group_by(l1_norm)%>%summarise(cv_num_coef=mean(cv_num_coef),
-                                                                      cv_loss=mean(cv_loss),
-                                                                      cv_l1_norm=mean(l1),
-                                                                      l1_norm=mean(l1_norm))
+  
+  cv_results_final<-cv_results %>% group_by(l1_norm)%>%summarise(cv_num_coef=mean(cv_num_coef),
+                                                                 cv_loss=mean(cv_loss),
+                                                                 cv_l1_norm=mean(l1),
+                                                                 l1_norm=mean(l1_norm))
   return(cv_results_final)
 }
 
