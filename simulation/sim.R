@@ -8,7 +8,7 @@ source("utils_MLE.R")
 #n=1000, monitoring times: perc_sample=0.02 & full basis subsampling: perc_sample_basis=0.02
 #n=2000, perc_sample=0.01,perc_sample_basis=0.01
 #seed_vals<-c(101,500,2000,4321,8688,10113,36899,45000,48001,50002)
-seed_vals<-c(101,500,2000,4321,8688,10113,36899,45000,48001,50002)+4444
+seed_vals<-c(101,500,2000,4321,8688,10113,36899,45000,48001,50002)+5555
 
 
 
