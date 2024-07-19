@@ -13,7 +13,7 @@ seed_vals<-c(101,500,2000,4321,8688,10113,36899,45000,48001,50002)
 
 
 for (seed in seed_vals) {
-  n=80
+  n=800
   res <- run_simMLE(n = n,
                  seed = seed,
                  type = "knT",
