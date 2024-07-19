@@ -1,6 +1,6 @@
 #!/bin/bash
 # Job name:
-#SBATCH --job-name=106
+#SBATCH --job-name=107
 #
 # Partition:
 #SBATCH --partition=savio3
@@ -24,4 +24,4 @@
 
 module load r
 
-R CMD BATCH --no-save sim.R sim106.Rout
+R CMD BATCH --no-save sim.R sim107.Rout
